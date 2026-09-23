@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d3150" />
+    <meta name="description" content="Suivi et prévision des cycles de production de bobines." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <title>Application Bobines</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div><p class="eyebrow">SUIVI DE PRODUCTION</p><h1>Application Bobines</h1></div>
+        <button id="install-button" class="icon-button" hidden aria-label="Installer l’application">⇩</button>
+      </header>
+      <section class="shift-panel" aria-labelledby="shift-title">
+        <div class="section-heading"><div><p class="eyebrow">POSTE ACTIF</p><h2 id="shift-title">Choisir le poste</h2></div><span id="shift-range" class="shift-range">—</span></div>
+        <div id="shift-options" class="shift-options" role="radiogroup"></div>
+      </section>
+      <section class="dashboard-header"><div><h2>Mes lignes</h2><p id="dashboard-help">Configurez une ligne pour commencer.</p></div><button id="add-line" class="secondary-button">＋ Ajouter</button></section>
+      <section id="line-list" class="line-list" aria-live="polite"></section>
+      <section id="empty-state" class="empty-state"><span>◎</span><h2>Aucune ligne active</h2><p>Ajoutez jusqu’à 10 lignes et lancez leur premier cycle.</p><button class="primary-button add-line-action">＋ Ajouter une ligne</button></section>
+    </main>
+    <dialog id="line-dialog" class="line-dialog">
+      <form id="line-form" method="dialog">
+        <div class="dialog-header"><div><p class="eyebrow" id="form-kicker">NOUVELLE LIGNE</p><h2 id="dialog-title">Configurer une ligne</h2></div><button type="button" class="close-button" id="close-dialog" aria-label="Fermer">×</button></div>
+        <label>Numéro de ligne<input required inputmode="numeric" name="lineNumber" min="1" max="999" type="number" placeholder="Ex. 4" /></label>
+        <div class="form-grid"><label>Métrage d’une bobine (m)<input required inputmode="decimal" name="length" min="1" type="number" placeholder="Ex. 4000" /></label><label>Vitesse (m/min)<input required inputmode="decimal" name="speed" min="0.01" step="any" type="number" placeholder="Ex. 80" /></label></div>
+        <label>Bobines par cycle<input required inputmode="numeric" name="coilsPerCycle" min="1" value="2" type="number" /></label>
+        <p id="duration-preview" class="duration-preview">La durée du cycle apparaîtra ici.</p>
+        <div class="dialog-actions"><button type="button" class="secondary-button" id="delete-line" hidden>Supprimer</button><span></span><button type="button" class="secondary-button" id="cancel-dialog">Annuler</button><button class="primary-button" value="save">Enregistrer</button></div>
+      </form>
+    </dialog>
+    <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
+    <template id="line-card-template"><article class="line-card"><div class="line-card-top"><button class="line-title open-details"><span class="line-name"></span><span class="line-config"></span></button><span class="status-pill"></span></div><div class="metrics"><div><span>Durée cycle</span><strong class="cycle-duration"></strong></div><div><span>Départ</span><strong class="started-at">Non démarré</strong></div><div><span>Prochaine fin</span><strong class="next-end">—</strong></div><div><span>Marge finale</span><strong class="final-margin">—</strong></div></div><p class="line-message"></p><div class="card-actions"><button class="start-button">▶ DÉPART CYCLE</button><button class="complete-button">✓ BOBINE TERMINÉE</button></div></article></template>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
