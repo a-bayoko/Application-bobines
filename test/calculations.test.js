@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { cycleDurationMs, formatDuration, getShiftWindow, getStatus, projectCycles } from '../src/calculations.js';
+
+test('calcule le métrage divisé par la vitesse et conserve les secondes', () => { assert.equal(cycleDurationMs(4000, 80), 3_000_000); assert.equal(formatDuration(cycleDurationMs(4500, 80)), '56 min 15 s'); });
+test('détermine les postes matin et après-midi', () => { const n = new Date('2025-01-10T10:00:00'); assert.equal(getShiftWindow('morning', n).end.getHours(), 14); assert.equal(getShiftWindow('afternoon', n).end.getHours(), 22); });
+test('gère le poste de nuit à cheval sur minuit', () => { const w = getShiftWindow('night', new Date('2025-01-11T02:00:00')); assert.equal(w.start.getDate(), 10); assert.equal(w.start.getHours(), 22); assert.equal(w.end.getDate(), 11); assert.equal(w.end.getHours(), 6); });
+test('gère les postes week-end de douze heures', () => { const n = new Date('2025-01-10T10:00:00'); assert.equal((getShiftWindow('weekend-day', n).end - getShiftWindow('weekend-day', n).start) / 36e5, 12); assert.equal((getShiftWindow('weekend-night', n).end - getShiftWindow('weekend-night', n).start) / 36e5, 12); });
+test('applique les seuils rouge, orange et vert', () => { assert.equal(getStatus(20*6e4).label, 'ROUGE'); assert.equal(getStatus(21*6e4).label, 'ORANGE'); assert.equal(getStatus(38*6e4).label, 'ORANGE'); assert.equal(getStatus(39*6e4).label, 'VERT'); });
+test('colore les trois derniers cycles et marque le dépassement', () => { const p = projectCycles({ startAt: new Date('2025-01-01T14:10').getTime(), durationMs: 50*6e4, shiftEnd: new Date('2025-01-01T22:00') }); assert.equal(p.marginMs, 20*6e4); assert.equal(p.status.label, 'ROUGE'); assert.deepEqual(p.cycles.filter(c=>c.highlighted).map(c=>c.number), [7,8,9]); assert.equal(p.cycles.at(-1).exceedsShift, true); });
+test('recalcule les projections depuis un nouveau départ', () => { const end = new Date('2025-01-01T14:00'); const old = projectCycles({startAt:new Date('2025-01-01T10:00'), durationMs:50*6e4, shiftEnd:end}); const updated = projectCycles({startAt:new Date('2025-01-01T10:10'), durationMs:50*6e4, shiftEnd:end}); assert.notEqual(old.cycles[0].end, updated.cycles[0].end); assert.equal(updated.cycles[0].end, new Date('2025-01-01T11:00').getTime()); });
