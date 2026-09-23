@@ -13,6 +13,11 @@ function render() {
   state.lines.forEach((line) => { const card = $('#line-card-template').content.firstElementChild.cloneNode(true); const duration = cycleDurationMs(line.length, line.speed); const projection = line.startAt ? projectCycles({ startAt: line.startAt, durationMs: duration, shiftEnd: window.end }) : null; card.dataset.id = line.id; card.querySelector('.line-name').textContent = `L${line.lineNumber}`; card.querySelector('.line-config').textContent = `${line.length} m · ${line.speed} m/min · ${line.coilsPerCycle} bobines`; card.querySelector('.cycle-duration').textContent = formatDuration(duration); card.querySelector('.started-at').textContent = line.startAt ? formatClock(line.startAt) : 'Non démarré'; card.querySelector('.next-end').textContent = line.startAt ? formatClock(nextCycleEnd(line)) : '—';
     const pill = card.querySelector('.status-pill'); const msg = card.querySelector('.line-message');
     if (projection?.status) { pill.textContent = projection.status.label; pill.classList.add(projection.status.className); card.querySelector('.final-margin').textContent = formatDuration(projection.marginMs); msg.textContent = `Dernier cycle terminé à ${formatClock(projection.cycles.filter(c => !c.exceedsShift).at(-1).end)}.`; } else if (line.startAt) { pill.textContent = 'À RECALER'; pill.classList.add('neutral'); card.querySelector('.final-margin').textContent = 'Aucun cycle terminé'; msg.textContent = 'Le cycle en cours dépasse la fin du poste.'; } else { pill.textContent = 'EN ATTENTE'; pill.classList.add('neutral'); card.querySelector('.final-margin').textContent = '—'; msg.textContent = 'Lancez le cycle pour obtenir la projection.'; }
+    if (projection) {
+      card.querySelector('.projection-panel').hidden = false;
+      card.querySelector('.projection-list').innerHTML = projection.cycles.map((cycle) => `<li class="${cycle.highlighted ? `highlight ${cycle.status.className}` : ''} ${cycle.exceedsShift ? 'exceeds' : ''}"><strong>Cycle ${cycle.number}</strong><span>${formatClock(cycle.start)} → ${formatClock(cycle.end)}</span>${cycle.exceedsShift ? '<em>Dépassement du poste</em>' : cycle.highlighted ? `<em>${cycle.status.label}</em>` : ''}</li>`).join('');
+      card.querySelector('.start-button').textContent = '↻ CYCLE RELANCÉ';
+    }
     list.append(card);
   });
 }

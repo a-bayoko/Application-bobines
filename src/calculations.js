@@ -6,7 +6,7 @@ export const SHIFTS = [
   { id: 'weekend-night', label: 'Week-end nuit', start: '18:00', end: '06:00' }
 ];
 
-export function cycleDurationMs(length, speed) { return (Number(length) / Number(speed)) * 60_000; }
+export function cycleDurationMs(length, speed, _coilsPerCycle) { return (Number(length) / Number(speed)) * 60_000; }
 export function formatDuration(ms) {
   const totalSeconds = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(totalSeconds / 60)} min ${String(totalSeconds % 60).padStart(2, '0')} s`;
