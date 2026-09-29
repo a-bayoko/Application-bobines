@@ -42,8 +42,9 @@ export function activeCycle(production, durationMs, shiftEnd, at = Date.now()) {
   if (!production?.startAt || production.endAt || production.pausedAt) return null;
   const end = new Date(shiftEnd).getTime(); const time = Math.min(Number(at), end);
   if (time >= end || time < production.startAt) return null;
-  const projected = projectCycles({ startAt: production.startAt, durationMs, shiftEnd: end, pauses: production.pauses || [] });
-  const cycle = projected.cycles.find((item) => item.end > time);
+  // Le cycle physique peut franchir la relève : on l'affiche, sans le compter dans la production terminée du poste.
+  const projected = projectCycles({ startAt: production.startAt, durationMs, shiftEnd: end + durationMs + 24 * 60 * 60_000, pauses: production.pauses || [] });
+  const cycle = projected.cycles.find((item) => item.start < end && item.end > time);
   if (!cycle) return null;
   const elapsed = Math.max(0, time - cycle.start); const span = Math.max(1, cycle.end - cycle.start);
   return { ...cycle, progress: Math.min(100, Math.max(0, (elapsed / span) * 100)) };
