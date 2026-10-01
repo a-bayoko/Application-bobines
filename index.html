@@ -13,7 +13,7 @@
 <body>
 <main class="app-shell">
   <header class="app-header"><div><p class="eyebrow">SUIVI DE PRODUCTION</p><h1>Application Bobines</h1></div><button id="install-button" class="icon-button" hidden aria-label="Installer l’application">⇩</button></header>
-  <section class="operator-panel"><label>N° opérateur <input id="operator-number" inputmode="numeric" type="text" value="1073" /></label><p>Associé automatiquement aux événements du poste.</p></section>
+  <section class="operator-panel"><label>N° opérateur <input id="operator-number" inputmode="numeric" type="text" value="" placeholder="Ex. 1073" autocomplete="off" /></label><p>Valable uniquement pour le poste sélectionné.</p></section>
   <section class="shift-panel" aria-labelledby="shift-title"><div class="section-heading"><div><p class="eyebrow">POSTE ACTIF</p><h2 id="shift-title">Choisir le poste</h2></div><span id="shift-range" class="shift-range">—</span></div><div id="shift-options" class="shift-options" role="radiogroup"></div></section>
   <section class="dashboard-header"><div><h2>Mes lignes</h2><p id="dashboard-help">Configurez une ligne pour commencer.</p></div><button id="add-line" class="secondary-button">＋ Ajouter</button></section>
   <div class="dashboard-columns" aria-hidden="true"><span>Ligne</span><span>Cycle actuel</span><span>Progression</span></div>
