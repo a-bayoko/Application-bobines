@@ -20,7 +20,7 @@ function migrate(raw) {
   const base = raw && typeof raw === 'object' ? raw : {};
   return {
     shiftId: base.shiftId || 'morning',
-    operatorNumber: String(base.operatorNumber || '1073'),
+    operatorSessions: base.operatorSessions && typeof base.operatorSessions === 'object' ? base.operatorSessions : {},
     events: Array.isArray(base.events) ? base.events : [],
     lines: Array.isArray(base.lines) ? base.lines.map((line) => ({
       ...line,
@@ -33,8 +33,13 @@ let state = migrate(JSON.parse(localStorage.getItem(KEY) || 'null'));
 let editingId = null; let installPrompt; let pendingEvent = null; let pendingWaste = null; let selectedWaste = null;
 const save = () => localStorage.setItem(KEY, JSON.stringify(state));
 const lineById = (id) => state.lines.find((line) => line.id === id);
+function shiftSessionKey() {
+  const w = currentWindow();
+  return `${state.shiftId}:${w.start.toISOString()}`;
+}
+function operatorNumber() { return String(state.operatorSessions[shiftSessionKey()] || ''); }
 function eventFor(line, type, declaredAt, extra = {}) {
-  state.events.push({ id: crypto.randomUUID(), recordedAt: now(), declaredAt, type, lineId: line.id, lineNumber: line.lineNumber, operatorNumber: state.operatorNumber, production: { length: line.length, speed: line.speed, coilsPerCycle: line.coilsPerCycle }, ...extra });
+  state.events.push({ id: crypto.randomUUID(), recordedAt: now(), declaredAt, type, lineId: line.id, lineNumber: line.lineNumber, operatorNumber: operatorNumber(), shiftId: state.shiftId, shiftStart: currentWindow().start.getTime(), production: { length: line.length, speed: line.speed, coilsPerCycle: line.coilsPerCycle }, ...extra });
 }
 function currentProduction(line) { return line.production || (line.startAt ? { id: crypto.randomUUID(), startAt: line.startAt, pauses: [], endAt: null } : null); }
 function currentWindow() { return getShiftWindow(state.shiftId); }
@@ -44,7 +49,7 @@ function sessionEnded(production, window, at = now()) { return Boolean(productio
 function render() {
   const window = currentWindow(); const currentTime = now();
   $('#shift-range').textContent = `${formatClock(window.start)} → ${formatClock(window.end)}`;
-  $('#operator-number').value = state.operatorNumber;
+  $('#operator-number').value = operatorNumber();
   $('#shift-options').innerHTML = SHIFTS.map((shift) => `<button class="shift-option ${shift.id === state.shiftId ? 'selected' : ''}" data-shift="${shift.id}" role="radio" aria-checked="${shift.id === state.shiftId}">${shift.label}<small>${shift.start} → ${shift.end}</small></button>`).join('');
   const list = $('#line-list'); list.innerHTML = ''; $('#empty-state').hidden = state.lines.length > 0; $('.dashboard-columns').hidden = state.lines.length === 0;
   $('#dashboard-help').textContent = state.lines.length ? `${state.lines.length}/10 ligne${state.lines.length > 1 ? 's' : ''} · touchez une ligne pour les actions.` : 'Configurez une ligne pour commencer.';
@@ -96,7 +101,7 @@ function updatePreview() {
 function openEvent(line, type) {
   pendingEvent = { line, type }; const form = $('#event-form'); form.reset(); $('#event-error').hidden = true;
   const labels = { startManual: 'Saisir l’heure de départ', correctStart: 'Corriger l’heure de départ', pause: 'Arrêt / pause', resume: 'Reprise', endOf: 'Fin d’OF' };
-  $('#event-title').textContent = labels[type]; $('#event-kicker').textContent = `L${line.lineNumber} · OPÉRATEUR ${state.operatorNumber}`;
+  $('#event-title').textContent = labels[type]; $('#event-kicker').textContent = `L${line.lineNumber} · OPÉRATEUR ${operatorNumber()}`;
   $('#reason-label').hidden = type !== 'pause';
   $('#event-time-label').firstChild.textContent = type === 'correctStart' ? 'Nouvelle heure de départ' : 'Heure déclarée';
   form.elements.time.value = new Date().toTimeString().slice(0, 5); $('#event-dialog').showModal();
@@ -109,7 +114,7 @@ function start(line, declaredAt, type = 'start') {
   eventFor(line, type, declaredAt); save(); render();
 }
 function openWaste(line) {
-  pendingWaste = line; selectedWaste = null; $('#waste-kicker').textContent = `L${line.lineNumber} · OPÉRATEUR ${state.operatorNumber}`;
+  pendingWaste = line; selectedWaste = null; $('#waste-kicker').textContent = `L${line.lineNumber} · OPÉRATEUR ${operatorNumber()}`;
   $('#waste-step-codes').hidden = false; $('#waste-step-weight').hidden = true; $('#waste-error').hidden = true; $('#waste-form').elements.weight.value = '';
   $('#waste-codes').innerHTML = WASTE_CODES.map(([code, label]) => `<button type="button" class="waste-code" data-code="${code}"><strong>${code}</strong><span>${label}</span></button>`).join('');
   $('#waste-dialog').showModal();
@@ -140,7 +145,13 @@ function showDetails(id) {
   $('#detail-dialog').dataset.lineId = id; $('#detail-dialog').showModal();
 }
 
-$('#operator-number').addEventListener('change', (e) => { state.operatorNumber = e.target.value.trim() || '1073'; save(); render(); });
+$('#operator-number').addEventListener('change', (e) => {
+  const value = e.target.value.trim();
+  const key = shiftSessionKey();
+  if (value) state.operatorSessions[key] = value;
+  else delete state.operatorSessions[key];
+  save(); render();
+});
 $('#shift-options').addEventListener('click', (e) => { const b = e.target.closest('[data-shift]'); if (b) { state.shiftId = b.dataset.shift; save(); render(); } });
 $('#add-line').onclick = () => state.lines.length < 10 && openForm(); $('.add-line-action').onclick = () => openForm();
 $('#close-dialog').onclick = $('#cancel-dialog').onclick = () => $('#line-dialog').close(); $('#line-form').addEventListener('input', updatePreview);
