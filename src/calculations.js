@@ -17,30 +17,47 @@ export function getShiftWindow(shiftId, now = new Date()) {
   return { ...shift, start, end };
 }
 export function getStatus(marginMs) { const minutes = marginMs / 60_000; if (minutes <= 20) return { label: 'ROUGE', className: 'red' }; if (minutes <= 38) return { label: 'ORANGE', className: 'orange' }; return { label: 'VERT', className: 'green' }; }
+
 export function projectCycles({ startAt, durationMs, shiftEnd, pauses = [], stoppedAt = null }) {
-  const cycles = []; const end = new Date(shiftEnd).getTime(); const pausesBeforeEnd = pauses.filter((pause) => pause.startAt < end).sort((a, b) => a.startAt - b.startAt);
+  const cycles = []; const end = new Date(shiftEnd).getTime(); const stop = stoppedAt ? Math.min(Number(stoppedAt), end) : end;
+  const pausesBeforeEnd = pauses.filter((pause) => pause.startAt < stop).sort((a, b) => a.startAt - b.startAt);
   let cursor = Number(startAt); let pauseIndex = 0;
-  while (cursor < end && (!stoppedAt || cursor < stoppedAt)) {
+  while (cursor < stop) {
     let remaining = durationMs; const cycleStart = cursor;
     while (remaining > 0) {
       const pause = pausesBeforeEnd[pauseIndex];
-      const boundary = stoppedAt ? Math.min(end, stoppedAt) : end;
-      if (!pause || pause.startAt >= cursor + remaining || pause.startAt >= boundary) { cursor += remaining; remaining = 0; break; }
+      if (!pause || pause.startAt >= cursor + remaining || pause.startAt >= stop) { cursor += remaining; remaining = 0; break; }
       if (pause.startAt > cursor) { remaining -= pause.startAt - cursor; cursor = pause.startAt; }
       if (!pause.endAt) { cursor = Infinity; break; }
       cursor = Math.max(cursor, pause.endAt); pauseIndex += 1;
     }
-    if (!Number.isFinite(cursor) || cursor > end || (stoppedAt && cursor > stoppedAt)) break;
+    if (!Number.isFinite(cursor) || cursor > stop) break;
     cycles.push({ start: cycleStart, end: cursor });
   }
   const last = cycles.at(-1); const marginMs = last ? end - last.end : null; const status = marginMs === null ? null : getStatus(marginMs);
   return { cycles: cycles.map((cycle, index) => ({ ...cycle, number: index + 1, highlighted: Boolean(status && index >= cycles.length - 3), status })), marginMs, status, nextImpossible: Boolean(!stoppedAt && cursor !== Infinity && cursor > end) };
 }
-export function nextCycleEnd(production, durationMs, now = Date.now()) {
+
+export function activeCycle(production, durationMs, shiftEnd, at = Date.now()) {
   if (!production?.startAt || production.endAt || production.pausedAt) return null;
-  const projected = projectCycles({ startAt: production.startAt, durationMs, shiftEnd: new Date(now + 366 * 24 * 60 * 60_000), pauses: production.pauses || [] });
-  return projected.cycles.find((cycle) => cycle.end > now)?.end || null;
+  const end = new Date(shiftEnd).getTime(); const time = Math.min(Number(at), end);
+  if (time >= end || time < production.startAt) return null;
+  // Le cycle physique peut franchir la relève : on l'affiche, sans le compter dans la production terminée du poste.
+  const projected = projectCycles({ startAt: production.startAt, durationMs, shiftEnd: end + durationMs + 24 * 60 * 60_000, pauses: production.pauses || [] });
+  const cycle = projected.cycles.find((item) => item.start < end && item.end > time);
+  if (!cycle) return null;
+  const elapsed = Math.max(0, time - cycle.start); const span = Math.max(1, cycle.end - cycle.start);
+  return { ...cycle, progress: Math.min(100, Math.max(0, (elapsed / span) * 100)) };
 }
+
+export function nextCycleEnd(production, durationMs, shiftEnd = null, at = Date.now()) {
+  if (!production?.startAt || production.endAt || production.pausedAt) return null;
+  const limit = shiftEnd ? new Date(shiftEnd).getTime() : at + 366 * 24 * 60 * 60_000;
+  if (at >= limit) return null;
+  const projected = projectCycles({ startAt: production.startAt, durationMs, shiftEnd: limit, pauses: production.pauses || [] });
+  return projected.cycles.find((cycle) => cycle.end > at)?.end || null;
+}
+
 export function resolveManualTime(time, shiftWindow, now = Date.now()) {
   if (!/^\d{2}:\d{2}$/.test(time)) throw new Error('Saisissez une heure au format HH:MM.');
   const [hours, minutes] = time.split(':').map(Number); if (hours > 23 || minutes > 59) throw new Error('L’heure saisie est invalide.');
