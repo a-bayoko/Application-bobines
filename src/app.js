@@ -49,7 +49,7 @@ Object.values(LINE_GROUPS).flat().forEach((lineNumber) => {
   const p = DEFAULT_LINE_PARAMS[lineNumber] || { length: 3000, speed: 60, coilsPerCycle: 2 };
   state.lines.push({ id: crypto.randomUUID(), lineNumber, ...p, startAt: null, production: null, productionHistory: [] });
 });
-save();
+window.localStorage.setItem(KEY, JSON.stringify(state));
 let editingId = null; let installPrompt; let pendingEvent = null; let pendingWaste = null; let selectedWaste = null;
 const save = () => localStorage.setItem(KEY, JSON.stringify(state));
 const lineById = (id) => state.lines.find((line) => line.id === id);
