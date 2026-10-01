@@ -15,10 +15,11 @@
   <header class="app-header"><div><p class="eyebrow">SUIVI DE PRODUCTION</p><h1>Application Bobines</h1></div><button id="install-button" class="icon-button" hidden aria-label="Installer l’application">⇩</button></header>
   <section class="operator-panel"><label>N° opérateur <input id="operator-number" inputmode="numeric" type="text" value="" placeholder="Ex. 1073" autocomplete="off" /></label><p>Valable uniquement pour le poste sélectionné.</p></section>
   <section class="shift-panel" aria-labelledby="shift-title"><div class="section-heading"><div><p class="eyebrow">POSTE ACTIF</p><h2 id="shift-title">Choisir le poste</h2></div><span id="shift-range" class="shift-range">—</span></div><div id="shift-options" class="shift-options" role="radiogroup"></div></section>
-  <section class="dashboard-header"><div><h2>Mes lignes</h2><p id="dashboard-help">Configurez une ligne pour commencer.</p></div><button id="add-line" class="secondary-button">＋ Ajouter</button></section>
+  <section class="line-group-panel"><div class="section-heading"><div><p class="eyebrow">ZONE / SOUS-ZONE</p><h2>Choisir mon groupe de lignes</h2></div></div><div id="line-groups" class="line-groups"></div></section>
+  <section class="dashboard-header"><div><h2>Mes lignes</h2><p id="dashboard-help">Choisissez A1, A2, B1 ou B2.</p></div><button id="add-line" class="secondary-button" hidden>＋ Ajouter</button></section>
   <div class="dashboard-columns" aria-hidden="true"><span>Ligne</span><span>Cycle actuel</span><span>Progression</span></div>
   <section id="line-list" class="line-list" aria-live="polite"></section>
-  <section id="empty-state" class="empty-state"><span>◎</span><h2>Aucune ligne active</h2><p>Ajoutez jusqu’à 10 lignes et lancez leur premier cycle.</p><button class="primary-button add-line-action">＋ Ajouter une ligne</button></section>
+  <section id="empty-state" class="empty-state"><span>◎</span><h2>Aucune ligne dans ce groupe</h2><p>Choisissez A1, A2, B1 ou B2.</p><button class="primary-button add-line-action" hidden>＋ Ajouter une ligne</button></section>
 </main>
 
 <dialog id="line-dialog" class="line-dialog">

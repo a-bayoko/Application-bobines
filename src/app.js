@@ -1,6 +1,18 @@
 import { SHIFTS, cycleDurationMs, formatDuration, formatClock, getShiftWindow, projectCycles, activeCycle, resolveManualTime } from './calculations.js';
 
 const KEY = 'application-bobines-v1';
+const LINE_GROUPS = {
+  A1: [4, 5, 14, 1],
+  A2: [8, 3, 6, 7],
+  B1: [13, 9, 12, 15],
+  B2: [10, 16, 17, 18]
+};
+const DEFAULT_LINE_PARAMS = {
+  1: { length: 5700, speed: 60, coilsPerCycle: 2 },
+  4: { length: 3200, speed: 60, coilsPerCycle: 2 },
+  5: { length: 1800, speed: 41, coilsPerCycle: 2 },
+  14: { length: 3000, speed: 80, coilsPerCycle: 2 }
+};
 const STOP_REASONS = ['Panne machine', 'Réglage', 'Changement matière', 'Contrôle qualité', 'Manque matière', 'Autre'];
 const WASTE_CODES = [
   ['D1', 'Zip ouvert'],
@@ -21,6 +33,7 @@ function migrate(raw) {
   return {
     shiftId: base.shiftId || 'morning',
     operatorSessions: base.operatorSessions && typeof base.operatorSessions === 'object' ? base.operatorSessions : {},
+    lineGroup: base.lineGroup && LINE_GROUPS[base.lineGroup] ? base.lineGroup : 'A1',
     events: Array.isArray(base.events) ? base.events : [],
     lines: Array.isArray(base.lines) ? base.lines.map((line) => ({
       ...line,
@@ -30,6 +43,13 @@ function migrate(raw) {
   };
 }
 let state = migrate(JSON.parse(localStorage.getItem(KEY) || 'null'));
+const existingNumbers = new Set(state.lines.map((line) => Number(line.lineNumber)));
+Object.values(LINE_GROUPS).flat().forEach((lineNumber) => {
+  if (existingNumbers.has(lineNumber)) return;
+  const p = DEFAULT_LINE_PARAMS[lineNumber] || { length: 3000, speed: 60, coilsPerCycle: 2 };
+  state.lines.push({ id: crypto.randomUUID(), lineNumber, ...p, startAt: null, production: null, productionHistory: [] });
+});
+window.localStorage.setItem(KEY, JSON.stringify(state));
 let editingId = null; let installPrompt; let pendingEvent = null; let pendingWaste = null; let selectedWaste = null;
 const save = () => localStorage.setItem(KEY, JSON.stringify(state));
 const lineById = (id) => state.lines.find((line) => line.id === id);
@@ -51,10 +71,13 @@ function render() {
   $('#shift-range').textContent = `${formatClock(window.start)} → ${formatClock(window.end)}`;
   $('#operator-number').value = operatorNumber();
   $('#shift-options').innerHTML = SHIFTS.map((shift) => `<button class="shift-option ${shift.id === state.shiftId ? 'selected' : ''}" data-shift="${shift.id}" role="radio" aria-checked="${shift.id === state.shiftId}">${shift.label}<small>${shift.start} → ${shift.end}</small></button>`).join('');
-  const list = $('#line-list'); list.innerHTML = ''; $('#empty-state').hidden = state.lines.length > 0; $('.dashboard-columns').hidden = state.lines.length === 0;
-  $('#dashboard-help').textContent = state.lines.length ? `${state.lines.length}/10 ligne${state.lines.length > 1 ? 's' : ''} · touchez une ligne pour les actions.` : 'Configurez une ligne pour commencer.';
+  $('#line-groups').innerHTML = Object.entries(LINE_GROUPS).map(([group, lines]) => `<button class="group-option ${group === state.lineGroup ? 'selected' : ''}" data-group="${group}"><strong>${group}</strong><small>L${lines.join(' · L')}</small></button>`).join('');
+  const assigned = new Set(LINE_GROUPS[state.lineGroup]);
+  const visibleLines = state.lines.filter((line) => assigned.has(Number(line.lineNumber))).sort((a,b) => LINE_GROUPS[state.lineGroup].indexOf(Number(a.lineNumber)) - LINE_GROUPS[state.lineGroup].indexOf(Number(b.lineNumber)));
+  const list = $('#line-list'); list.innerHTML = ''; $('#empty-state').hidden = visibleLines.length > 0; $('.dashboard-columns').hidden = visibleLines.length === 0;
+  $('#dashboard-help').textContent = `${state.lineGroup} · ${visibleLines.length} lignes attribuées · touchez une ligne pour les actions.`;
 
-  state.lines.forEach((line) => {
+  visibleLines.forEach((line) => {
     const card = $('#line-card-template').content.firstElementChild.cloneNode(true);
     const duration = cycleDurationMs(line.length, line.speed); const production = currentProduction(line);
     const endedByShift = sessionEnded(production, window, currentTime); const paused = Boolean(production && !production.endAt && production.pausedAt);
@@ -153,7 +176,8 @@ $('#operator-number').addEventListener('change', (e) => {
   save(); render();
 });
 $('#shift-options').addEventListener('click', (e) => { const b = e.target.closest('[data-shift]'); if (b) { state.shiftId = b.dataset.shift; save(); render(); } });
-$('#add-line').onclick = () => state.lines.length < 10 && openForm(); $('.add-line-action').onclick = () => openForm();
+$('#line-groups').addEventListener('click', (e) => { const b = e.target.closest('[data-group]'); if (b) { state.lineGroup = b.dataset.group; save(); render(); } });
+$('#add-line').onclick = () => openForm(); $('.add-line-action').onclick = () => openForm();
 $('#close-dialog').onclick = $('#cancel-dialog').onclick = () => $('#line-dialog').close(); $('#line-form').addEventListener('input', updatePreview);
 $('#line-form').addEventListener('submit', (e) => {
   e.preventDefault(); const data = Object.fromEntries(new FormData(e.currentTarget)); const old = editingId && lineById(editingId); const number = Number(data.lineNumber);
