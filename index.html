@@ -12,36 +12,133 @@
 </head>
 <body>
 <main class="app-shell">
-  <header class="app-header"><div><p class="eyebrow">SUIVI DE PRODUCTION</p><h1>Application Bobines</h1></div><button id="install-button" class="icon-button" hidden aria-label="Installer l’application">⇩</button></header>
-  <section class="operator-panel"><label>N° opérateur <input id="operator-number" inputmode="numeric" type="text" value="" placeholder="Ex. 1073" autocomplete="off" /></label><p>Valable uniquement pour le poste sélectionné.</p></section>
-  <section class="shift-panel" aria-labelledby="shift-title"><div class="section-heading"><div><p class="eyebrow">POSTE ACTIF</p><h2 id="shift-title">Choisir le poste</h2></div><span id="shift-range" class="shift-range">—</span></div><div id="shift-options" class="shift-options" role="radiogroup"></div></section>
-  <section class="line-group-panel"><div class="section-heading"><div><p class="eyebrow">ZONE / SOUS-ZONE</p><h2>Choisir mon groupe de lignes</h2></div></div><div id="line-groups" class="line-groups"></div></section>
+  <header class="app-header">
+    <div><p class="eyebrow">SUIVI DE PRODUCTION · <span id="app-version"></span></p><h1>Application Bobines</h1></div>
+    <div class="header-actions">
+      <button id="summary-button" class="secondary-button small-button">📋 Bilan du poste</button>
+      <button id="install-button" class="icon-button" hidden aria-label="Installer l’application">⇩</button>
+    </div>
+  </header>
+
+  <section class="operator-panel">
+    <label>N° opérateur <input id="operator-number" inputmode="numeric" type="text" value="" placeholder="Ex. 1073" autocomplete="off" /></label>
+    <p>Obligatoire pour enregistrer une action. Valable uniquement pour le poste sélectionné.</p>
+  </section>
+
+  <section class="shift-panel" aria-labelledby="shift-title">
+    <div class="section-heading"><div><p class="eyebrow">POSTE ACTIF</p><h2 id="shift-title">Choisir le poste</h2></div><span id="shift-range" class="shift-range">—</span></div>
+    <div id="shift-options" class="shift-options" role="radiogroup"></div>
+    <div id="shift-warning" class="shift-warning" hidden></div>
+  </section>
+
+  <section class="line-group-panel">
+    <div class="section-heading"><div><p class="eyebrow">ZONE / SOUS-ZONE</p><h2>Choisir mon groupe de lignes</h2></div></div>
+    <div id="line-groups" class="line-groups"></div>
+  </section>
+
   <section class="dashboard-header"><div><h2>Mes lignes</h2><p id="dashboard-help">Choisissez A1, A2, B1 ou B2.</p></div><button id="add-line" class="secondary-button" hidden>＋ Ajouter</button></section>
   <div class="dashboard-columns" aria-hidden="true"><span>Ligne</span><span>Cycle actuel</span><span>Progression</span></div>
   <section id="line-list" class="line-list" aria-live="polite"></section>
   <section id="empty-state" class="empty-state"><span>◎</span><h2>Aucune ligne dans ce groupe</h2><p>Choisissez A1, A2, B1 ou B2.</p><button class="primary-button add-line-action" hidden>＋ Ajouter une ligne</button></section>
 </main>
 
+<!-- Paramètres ligne + OF -->
 <dialog id="line-dialog" class="line-dialog">
 <form id="line-form" method="dialog">
   <div class="dialog-header"><div><p class="eyebrow" id="form-kicker">NOUVELLE LIGNE</p><h2 id="dialog-title">Configurer une ligne</h2></div><button type="button" class="close-button" id="close-dialog" aria-label="Fermer">×</button></div>
   <label>Numéro de ligne<input required inputmode="numeric" name="lineNumber" min="1" max="999" type="number" placeholder="Ex. 4" /></label>
-  <div class="form-grid"><label>Métrage d’une bobine (m)<input required inputmode="decimal" name="length" min="1" type="number" placeholder="Ex. 4000" /></label><label>Vitesse banc de tirage (m/min)<input required inputmode="decimal" name="speed" min="0.01" step="any" type="number" placeholder="Ex. 80" /></label></div>
+  <div class="form-grid">
+    <label>Métrage d’une bobine (m)<input required inputmode="decimal" name="length" min="1" type="number" placeholder="Voir l’OF" /></label>
+    <label>Vitesse banc de tirage (m/min)<input required inputmode="decimal" name="speed" min="0.01" step="any" type="number" placeholder="Voir le banc" /></label>
+  </div>
   <label>Bobines par cycle<input required inputmode="numeric" name="coilsPerCycle" min="1" value="2" type="number" /></label>
-  <p id="duration-preview" class="duration-preview">La durée du cycle apparaîtra ici.</p><p id="line-error" class="form-error" hidden></p>
+  <p id="duration-preview" class="duration-preview">La durée du cycle apparaîtra ici.</p>
+
+  <fieldset class="of-fieldset">
+    <legend>OF et palettes <small>(facultatif — laisser vide si inconnu)</small></legend>
+    <div class="form-grid">
+      <label>N° OF<input name="ofNumber" type="text" autocomplete="off" placeholder="Ex. OF du dossier" /></label>
+      <label>Objectif (bobines)<input name="target" inputmode="numeric" type="number" min="1" placeholder="Inconnu" /></label>
+    </div>
+    <label>Bobines par palette (conditionnement)
+      <input name="palletCapacity" inputmode="numeric" type="number" min="1" placeholder="Inconnu" />
+    </label>
+    <div class="chip-row" id="capacity-chips" aria-label="Capacités connues">
+      <button type="button" data-cap="12">12 · MT12 / EMB15</button>
+      <button type="button" data-cap="8">8</button>
+      <button type="button" data-cap="10">10</button>
+      <button type="button" data-cap="24">24 · EMB14</button>
+    </div>
+    <label id="last-coil-label">Dernière bobine déjà réalisée sur cet OF
+      <input name="lastCoil" inputmode="numeric" type="number" min="0" value="0" />
+      <small class="field-help" id="last-coil-help">0 pour un nouvel OF. Si l’équipe précédente a déjà produit, indiquez sa dernière bobine : vous reprendrez à la suivante.</small>
+    </label>
+  </fieldset>
+
+  <p id="line-error" class="form-error" hidden></p>
   <div class="dialog-actions"><button type="button" class="secondary-button" id="delete-line" hidden>Supprimer</button><span></span><button type="button" class="secondary-button" id="cancel-dialog">Annuler</button><button class="primary-button" value="save">Enregistrer</button></div>
 </form>
 </dialog>
 
-<dialog id="event-dialog" class="line-dialog"><form id="event-form" method="dialog"><div class="dialog-header"><div><p class="eyebrow" id="event-kicker">ÉVÉNEMENT</p><h2 id="event-title"></h2></div><button type="button" class="close-button" id="close-event" aria-label="Fermer">×</button></div><label id="event-time-label">Heure déclarée<input required name="time" type="time" /></label><label id="reason-label" hidden>Motif d’arrêt<select name="reason"><option>Panne machine</option><option>Réglage</option><option>Changement matière</option><option>Contrôle qualité</option><option>Manque matière</option><option>Autre</option></select></label><p id="event-error" class="form-error" hidden></p><div class="dialog-actions"><span></span><button type="button" class="secondary-button" id="cancel-event">Annuler</button><button class="primary-button" value="save">Enregistrer</button></div></form></dialog>
+<!-- Heure déclarée : départ, correction, arrêt, reprise, fin d'OF -->
+<dialog id="event-dialog" class="line-dialog"><form id="event-form" method="dialog">
+  <div class="dialog-header"><div><p class="eyebrow" id="event-kicker">ÉVÉNEMENT</p><h2 id="event-title"></h2></div><button type="button" class="close-button" id="close-event" aria-label="Fermer">×</button></div>
+  <label id="event-time-label">Heure déclarée<input required name="time" type="time" /></label>
+  <label id="reason-label" hidden>Motif d’arrêt<select name="reason"></select></label>
+  <p id="event-error" class="form-error" hidden></p>
+  <div class="dialog-actions"><span></span><span></span><button type="button" class="secondary-button" id="cancel-event">Annuler</button><button class="primary-button" value="save">Enregistrer</button></div>
+</form></dialog>
 
+<!-- Déchet -->
 <dialog id="waste-dialog" class="line-dialog"><form id="waste-form" method="dialog">
   <div class="dialog-header"><div><p class="eyebrow" id="waste-kicker">DÉCHET</p><h2>Déclarer un déchet</h2></div><button type="button" class="close-button" id="close-waste" aria-label="Fermer">×</button></div>
   <div id="waste-step-codes"><p class="dialog-help">Choisissez le motif. Aucun code à mémoriser.</p><div id="waste-codes" class="waste-codes"></div></div>
-  <div id="waste-step-weight" hidden><button type="button" id="waste-back" class="text-button">← Changer le motif</button><p id="waste-selected" class="waste-selected"></p><label>Poids du déchet (kg)<div class="weight-input"><input name="weight" inputmode="decimal" type="text" autocomplete="off" placeholder="0" /><span>kg</span></div></label><div class="numeric-pad" aria-label="Clavier poids"><button type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">4</button><button type="button">5</button><button type="button">6</button><button type="button">7</button><button type="button">8</button><button type="button">9</button><button type="button">,</button><button type="button">0</button><button type="button" data-key="back">⌫</button></div><p id="waste-error" class="form-error" hidden></p><button class="primary-button full-button" value="save">VALIDER LE DÉCHET</button></div>
+  <div id="waste-step-weight" hidden>
+    <button type="button" id="waste-back" class="text-button">← Changer le motif</button>
+    <p id="waste-selected" class="waste-selected"></p>
+    <label>Poids du déchet (kg)<div class="weight-input"><input name="weight" inputmode="decimal" type="text" autocomplete="off" placeholder="0" /><span>kg</span></div></label>
+    <div class="numeric-pad" aria-label="Clavier poids"></div>
+    <p id="waste-error" class="form-error" hidden></p>
+    <button class="primary-button full-button" value="save">VALIDER LE DÉCHET</button>
+  </div>
 </form></dialog>
 
+<!-- Anomalie sans arrêt -->
+<dialog id="anomaly-dialog" class="line-dialog"><form id="anomaly-form" method="dialog">
+  <div class="dialog-header"><div><p class="eyebrow" id="anomaly-kicker">ANOMALIE</p><h2>Anomalie sans arrêt</h2></div><button type="button" class="close-button" id="close-anomaly" aria-label="Fermer">×</button></div>
+  <div id="anomaly-codes" class="waste-codes"></div>
+  <label>Note (facultatif)<input name="note" type="text" autocomplete="off" placeholder="Ex. bobine 37 à déclasser" /></label>
+  <p id="anomaly-error" class="form-error" hidden></p>
+  <button class="primary-button full-button" value="save">ENREGISTRER L’ANOMALIE</button>
+</form></dialog>
+
+<!-- Palette complète : poids brut -->
+<dialog id="pallet-dialog" class="line-dialog"><form id="pallet-form" method="dialog">
+  <div class="dialog-header"><div><p class="eyebrow" id="pallet-kicker">PALETTE</p><h2 id="pallet-title">Palette complète</h2></div><button type="button" class="close-button" id="close-pallet" aria-label="Fermer">×</button></div>
+  <p id="pallet-info" class="waste-selected"></p>
+  <label>Poids brut mesuré (kg)<div class="weight-input"><input name="weight" inputmode="decimal" type="text" autocomplete="off" placeholder="0" /><span>kg</span></div></label>
+  <div class="numeric-pad" aria-label="Clavier poids"></div>
+  <p class="field-help">Poids net non calculé : aucune tare officielle n’est paramétrée.</p>
+  <p id="pallet-error" class="form-error" hidden></p>
+  <div class="dialog-actions"><span></span><span></span><button type="button" class="secondary-button" id="pallet-later">Plus tard</button><button class="primary-button" value="save">Valider le poids</button></div>
+</form></dialog>
+
+<!-- Bilan du poste -->
+<dialog id="summary-dialog" class="detail-dialog wide-dialog"><div id="summary-content"></div></dialog>
+
 <dialog id="detail-dialog" class="detail-dialog"><div id="detail-content"></div></dialog>
-<template id="line-card-template"><article class="line-card compact-card" tabindex="0" role="button"><div class="compact-line"><div><strong class="line-name"></strong><small class="line-state"></small></div><div class="cycle-current"><strong class="cycle-window">Non démarré</strong><small class="line-config"></small></div><div class="progress-wrap"><div class="progress-track"><span class="progress-fill"></span></div><strong class="progress-value">—</strong></div></div><div class="quick-start" hidden><button class="start-now-button">▶ DÉMARRER</button><button class="manual-start-button">🕒 HEURE DE DÉPART</button></div></article></template>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<template id="line-card-template"><article class="line-card compact-card" tabindex="0" role="button">
+  <div class="compact-line">
+    <div><strong class="line-name"></strong><small class="line-state"></small></div>
+    <div class="cycle-current"><strong class="cycle-window">Non démarré</strong><small class="line-config"></small></div>
+    <div class="progress-wrap"><div class="progress-track"><span class="progress-fill"></span></div><strong class="progress-value">—</strong></div>
+  </div>
+  <div class="card-meta" hidden></div>
+  <div class="quick-start" hidden><button class="start-now-button">▶ DÉMARRER</button><button class="manual-start-button">🕒 HEURE DE DÉPART</button></div>
+  <div class="quick-config" hidden><button class="config-button">⚙ RENSEIGNER MÉTRAGE ET VITESSE</button></div>
+</article></template>
 <script type="module" src="./src/app.js"></script>
 </body></html>

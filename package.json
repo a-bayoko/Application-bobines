@@ -1,10 +1,11 @@
 {
   "name": "application-bobines",
-  "version": "1.0.0",
+  "version": "2.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 4173 --bind 0.0.0.0",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "python3 test/e2e/parcours_operateur.py"
   }
 }
